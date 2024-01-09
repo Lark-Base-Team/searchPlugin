@@ -3,13 +3,13 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2023-12-31 12:48
+ * @LastTime   : 2024-01-09 09:48
  * @desc       : 
 -->
 
 <script setup lang="ts">
   import { bitable } from '@lark-base-open/js-sdk';
-  import { LarkOne, DocDetail } from '@icon-park/vue-next';
+  import { LarkOne, DocDetail, Like } from '@icon-park/vue-next';
   import { dayjs } from 'element-plus';
   import { records } from './records';
   import { fieldMeteListDemo } from './fieldMeteList';
@@ -18,6 +18,26 @@
   import { getGifUrl, getIconUrl } from '@/utils/util';
 
   import HightLightText from '@/components/HightLightText';
+  import useClipboard from 'vue-clipboard3';
+
+  // 使用插件
+  const { toClipboard } = useClipboard();
+
+  const copy = async (msg) => {
+    try {
+      // 复制
+      await toClipboard(msg);
+      ElMessage({
+        message: '插件名字已复制，即将跳转至表单页面~',
+        type: 'success',
+        duration: 1500,
+        showClose: true,
+      });
+      // 复制成功
+    } catch (e) {
+      // 复制失败
+    }
+  };
 
   const fieldMeteList = ref([]);
   const tableDataList = ref([
@@ -132,8 +152,13 @@
   // 插件描述
   const pluginInfo = ref();
 
+  // 搜索的数据
+  const inputText = ref();
+
   const isShowTable = ref(true);
   function search() {
+    inputText.value = pluginInfo.value;
+
     isShowTable.value = false;
 
     // 先重新获取全部数据
@@ -150,15 +175,31 @@
     // }
 
     // 筛选插件信息
-    filterTableDataList.value = filterTableDataList.value.filter((item) => {
-      let _name = item.name[0].text;
-      let _description = item.description[0].text;
 
-      const nameMatch = !pluginInfo.value || _name?.includes(pluginInfo.value);
-      const descriptionMatch = !pluginInfo.value || _description?.includes(pluginInfo.value);
-      // debugger;
-      return nameMatch || descriptionMatch;
-    });
+    // 匹配插件名字或插件描述; 名字匹配的放前面
+    filterTableDataList.value = filterTableDataList.value
+      .filter((item) => {
+        let _name = item.name[0].text;
+        let _description = item.description[0].text;
+
+        const nameMatch = !pluginInfo.value || _name?.includes(pluginInfo.value);
+        const descriptionMatch = !pluginInfo.value || _description?.includes(pluginInfo.value);
+
+        return nameMatch || descriptionMatch;
+      })
+      .sort((a, b) => {
+        const aNameMatch = !pluginInfo.value || a.name[0].text?.includes(pluginInfo.value);
+        const bNameMatch = !pluginInfo.value || b.name[0].text?.includes(pluginInfo.value);
+
+        // 将匹配的数据排在前面
+        if (aNameMatch && !bNameMatch) {
+          return -1;
+        } else if (!aNameMatch && bNameMatch) {
+          return 1;
+        } else {
+          return 0;
+        }
+      });
 
     isShowTable.value = true;
 
@@ -324,6 +365,18 @@
     let url = getLink(record?.detailUrl);
 
     window.open(url, '_blank');
+  };
+
+  /**
+   * @desc  : 夸夸开发者
+   */
+  const good = () => {
+    copy(activeItem.value?.name[0]?.text);
+    setTimeout(() => {
+      // 夸一夸开发者地址
+      let url = 'https://bytedance.larkoffice.com/share/base/form/shrcnD8K1V3yxMaOhGfa9mYggQc';
+      window.open(url, '_blank');
+    }, 600);
   };
 
   const carouselList = ref([
@@ -496,7 +549,7 @@
               <div>
                 <HightLightText
                   :key="scope.row.recordId + Math.random()"
-                  :inputText="pluginInfo"
+                  :inputText="inputText"
                   :allText="scope.row.name[0].text"
                 />
               </div>
@@ -520,7 +573,7 @@
             <div class="plugin-description">
               <HightLightText
                 :key="scope.row.recordId + Math.random()"
-                :inputText="pluginInfo"
+                :inputText="inputText"
                 :allText="scope.row.description[0].text"
               />
             </div>
@@ -552,17 +605,17 @@
             /> -->
             <div class="operation">
               <div
+                class="pluginDetail"
+                @click="detail(scope.row)"
+              >
+                详情
+              </div>
+              <div
                 class="tryPlugin"
                 v-if="getLink(scope.row?.detailUrl)"
                 @click="tryPlugin(scope.row)"
               >
                 试用
-              </div>
-              <div
-                class="pluginDetail"
-                @click="detail(scope.row)"
-              >
-                详情
               </div>
             </div>
           </template>
@@ -590,7 +643,12 @@
       size="85%"
     >
       <template #header="{ close, titleId }">
-        <div :id="titleId">插件详情</div>
+        <div
+          :id="titleId"
+          class="header"
+        >
+          插件详情
+        </div>
         <el-button
           type="danger"
           @click="close"
@@ -652,10 +710,11 @@
           ></div> -->
         </div>
 
-        <div class="item">
+        <!-- FIXME 暂时隐藏, 因为官方表格也没展示这个 -->
+        <!-- <div class="item">
           <div class="label">最后更新时间：</div>
           <div>{{ dayjs(activeItem.lastUpdateTime).format('YYYY-MM-DD HH:mm') }}</div>
-        </div>
+        </div> -->
 
         <div class="item">
           <div class="label">图标：</div>
@@ -719,7 +778,7 @@
         </div>
 
         <div class="item">
-          <div class="label">插件详情页地址：</div>
+          <div class="label">插件试用地址：</div>
           <a
             class="link"
             v-if="getLink(activeItem?.detailUrl)"
@@ -728,7 +787,28 @@
             >{{ getLink(activeItem?.detailUrl) }}</a
           >
 
-          <div v-else>{{ '暂无插件详情页地址' }}</div>
+          <div v-else>{{ '暂无插件试用地址' }}</div>
+        </div>
+        <div class="item">
+          <el-tooltip
+            :hide-after="0"
+            placement="bottom-start"
+            effect="customized"
+          >
+            <template #content
+              >插件有帮助到你的话，<br />邀请你夸一夸插件的开发者，<br />你的鼓励是开发者开发插件的动力。</template
+            >
+            <div
+              class="label good"
+              @click="good"
+            >
+              <like
+                theme="filled"
+                size="16"
+              />
+              <span>我要去夸一夸开发者~</span>
+            </div>
+          </el-tooltip>
         </div>
       </div>
     </el-drawer>
@@ -835,9 +915,10 @@
 
   .tip {
     color: rgb(20, 86, 240);
-    opacity: 0.7;
-    font-size: 14px;
-    margin-bottom: 5px;
+    opacity: 0.8;
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 8px;
   }
 
   .tip-icon {
@@ -858,7 +939,7 @@
 
   .button {
     margin-top: 10px;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
   }
 
   .carousel {
@@ -879,6 +960,25 @@
         color: rgb(20, 86, 240);
         white-space: nowrap;
       }
+    }
+  }
+
+  .good {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 12px;
+    font-weight: 500;
+    padding: 4px;
+    font-size: 16px;
+
+    span {
+      margin-left: 5px;
+    }
+
+    &:hover {
+      cursor: pointer;
+      background-color: #3370ff1a;
     }
   }
 
@@ -935,7 +1035,7 @@
     }
 
     .tryPlugin {
-      margin-bottom: 10px;
+      margin-top: 5px;
     }
   }
 
@@ -955,6 +1055,16 @@
   .plugin-description {
     color: #646a73;
     font-size: 13px;
+  }
+
+  :deep(.el-drawer__header) {
+    margin-bottom: 12px;
+  }
+
+  .header {
+    font-size: 16px;
+    color: rgb(20, 86, 240);
+    font-weight: 500;
   }
 </style>
 
