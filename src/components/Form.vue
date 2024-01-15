@@ -3,13 +3,13 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2024-01-09 09:48
+ * @LastTime   : 2024-01-13 14:40
  * @desc       : 
 -->
 
 <script setup lang="ts">
   import { bitable } from '@lark-base-open/js-sdk';
-  import { LarkOne, DocDetail, Like } from '@icon-park/vue-next';
+  import { LarkOne, DocDetail, Like, Code, ShareThree, PlayOne, ViewGridDetail } from '@icon-park/vue-next';
   import { dayjs } from 'element-plus';
   import { records } from './records';
   import { fieldMeteListDemo } from './fieldMeteList';
@@ -20,15 +20,47 @@
   import HightLightText from '@/components/HightLightText';
   import useClipboard from 'vue-clipboard3';
 
+  import { useI18n } from 'vue-i18n';
+  const { t } = useI18n();
+
   // 使用插件
   const { toClipboard } = useClipboard();
+
+  const isZh = ref(false);
+
+  onMounted(() => {
+    bitable.bridge.getLanguage().then((_lang) => {
+      // 是否显示中文
+      if (_lang === 'zh' || _lang === 'zh-HK' || _lang === 'zh-TW') {
+        isZh.value = true;
+      } else {
+        isZh.value = false;
+      }
+    });
+  });
 
   const copy = async (msg) => {
     try {
       // 复制
       await toClipboard(msg);
       ElMessage({
-        message: '插件名字已复制，即将跳转至表单页面~',
+        message: t('Plugin name copied'),
+        type: 'success',
+        duration: 1500,
+        showClose: true,
+      });
+      // 复制成功
+    } catch (e) {
+      // 复制失败
+    }
+  };
+
+  const copyUrl = async (msg) => {
+    try {
+      // 复制
+      await toClipboard(msg);
+      ElMessage({
+        message: t('Plugin sharing links have been copied'),
         type: 'success',
         duration: 1500,
         showClose: true,
@@ -115,7 +147,14 @@
         }
       }
 
-      tableDataList.value.push({ ..._recordData, recordId: item.recordId });
+      tableDataList.value.push({
+        ..._recordData,
+        recordId: item.recordId,
+        nameEn: item.nameEn,
+        descriptionEn: item.descriptionEn,
+        authorEn: item.authorEn,
+        useMethodEn: item.useMethodEn,
+      });
     });
 
     tableDataList.value = await Promise.all(tableDataList.value.map(processRecord));
@@ -164,56 +203,67 @@
     // 先重新获取全部数据
     filterTableDataList.value = tableDataList.value;
 
-    // if (!pluginName.value && !pluginDescription.value && !pluginAuthor.value) {
-    //   filterTableDataList.value = tableDataList.value;
-    //   return;
-    // }
-
-    // if (!pluginInfo.value) {
-    //   filterTableDataList.value = tableDataList.value;
-    //   return;
-    // }
-
     // 筛选插件信息
 
     // 匹配插件名字或插件描述; 名字匹配的放前面
+    // filterTableDataList.value = filterTableDataList.value
+    //   .filter((item) => {
+    //     let _name = isZh.value ? item.name[0].text : item.nameEn;
+    //     let _description = isZh.value ? item.description[0].text : item.descriptionEn;
+
+    //     const nameMatch =
+    //       !pluginInfo.value || _name.toLocaleLowerCase()?.includes(pluginInfo.value.toLocaleLowerCase());
+    //     const descriptionMatch =
+    //       !pluginInfo.value || _description.toLocaleLowerCase()?.includes(pluginInfo.value.toLocaleLowerCase());
+
+    //     return nameMatch || descriptionMatch;
+    //   })
+    //   .sort((a, b) => {
+    //     const aNameMatch =
+    //       !pluginInfo.value ||
+    //       (isZh.value
+    //         ? a.name[0].text.toLocaleLowerCase()?.includes(pluginInfo.value.toLocaleLowerCase())
+    //         : a.nameEn?.includes(pluginInfo.value.toLocaleLowerCase()));
+
+    //     const bNameMatch =
+    //       !pluginInfo.value ||
+    //       (isZh.value
+    //         ? b.name[0].text.toLocaleLowerCase()?.includes(pluginInfo.value.toLocaleLowerCase())
+    //         : b.nameEn?.includes(pluginInfo.value.toLocaleLowerCase()));
+
+    //     // 将匹配的数据排在前面
+    //     if (aNameMatch && !bNameMatch) {
+    //       return -1;
+    //     } else if (!aNameMatch && bNameMatch) {
+    //       return 1;
+    //     } else {
+    //       return 0;
+    //     }
+    //   });
+
     filterTableDataList.value = filterTableDataList.value
       .filter((item) => {
-        let _name = item.name[0].text;
-        let _description = item.description[0].text;
+        const _name = isZh.value ? item.name[0].text : item.nameEn;
+        const _description = isZh.value ? item.description[0].text : item.descriptionEn;
 
-        const nameMatch = !pluginInfo.value || _name?.includes(pluginInfo.value);
-        const descriptionMatch = !pluginInfo.value || _description?.includes(pluginInfo.value);
+        const nameMatch = !pluginInfo.value || _name.toLowerCase().includes(pluginInfo.value.toLowerCase());
+        const descriptionMatch =
+          !pluginInfo.value || _description.toLowerCase().includes(pluginInfo.value.toLowerCase());
 
         return nameMatch || descriptionMatch;
       })
       .sort((a, b) => {
-        const aNameMatch = !pluginInfo.value || a.name[0].text?.includes(pluginInfo.value);
-        const bNameMatch = !pluginInfo.value || b.name[0].text?.includes(pluginInfo.value);
+        const aName = isZh.value ? a.name[0].text : a.nameEn;
+        const bName = isZh.value ? b.name[0].text : b.nameEn;
 
-        // 将匹配的数据排在前面
-        if (aNameMatch && !bNameMatch) {
-          return -1;
-        } else if (!aNameMatch && bNameMatch) {
-          return 1;
-        } else {
-          return 0;
-        }
+        const aNameMatch = !pluginInfo.value || aName.toLowerCase().includes(pluginInfo.value.toLowerCase());
+        const bNameMatch = !pluginInfo.value || bName.toLowerCase().includes(pluginInfo.value.toLowerCase());
+
+        // 使用 localeCompare 进行排序
+        return aNameMatch && !bNameMatch ? -1 : bNameMatch && !aNameMatch ? 1 : aName.localeCompare(bName);
       });
 
     isShowTable.value = true;
-
-    // 筛选视图类型和视图名字
-    // filterTableDataList.value = filterTableDataList.value.filter((item) => {
-    //   let _name = item.name[0].text;
-    //   let _description = item.description[0].text;
-    //   let _author = item.author[0].text;
-
-    //   const nameMatch = !pluginName.value || _name?.includes(pluginName.value);
-    //   const descriptionMatch = !pluginDescription.value || _description?.includes(pluginDescription.value);
-    //   const authorMatch = !pluginAuthor.value || _author?.includes(pluginAuthor.value);
-    //   return nameMatch && descriptionMatch && authorMatch;
-    // });
   }
 
   function reset() {
@@ -221,6 +271,7 @@
     // pluginDescription.value = '';
     // pluginAuthor.value = '';
     pluginInfo.value = '';
+    inputText.value = '';
 
     filterTableDataList.value = tableDataList.value;
   }
@@ -382,38 +433,38 @@
   const carouselList = ref([
     {
       image: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/yluu…zulael/ljhwZthlaukjlkulzlp/extension_banner_5.png',
-      title: '业务小程序',
-      desc: '一张多维表，仅需3步就可以轻松变成工作台小程序',
+      title: 'Operational mini-programs',
+      desc: 'A multi-dimensional table that can be easily turned into a workbench applet in just 3 steps',
       url: 'https://www.feishu.cn/docx/XCQRdS9jIo8Rq8xuDCdcpbdhnpg',
     },
     {
       image: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/yluu…zulael/ljhwZthlaukjlkulzlp/extension_banner_1.png',
-      title: '开发者指南',
-      desc: '使用你熟悉的语言，简单、快捷实现自定义功能',
+      title: 'Developer',
+      desc: 'Easy and fast customization in a language you are familiar with',
       url: 'https://feishu.feishu.cn/docx/U3wodO5eqome3uxFAC3cl0qanIe',
     },
     {
       image: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/yluu…zulael/ljhwZthlaukjlkulzlp/extension_banner_2.png',
-      title: '提交插件需求',
-      desc: '没找到想到的插件？提交一个需求吧。',
+      title: 'Submit plugin request',
+      desc: 'Didn',
       url: 'https://bytedance.larkoffice.com/share/base/form/shrcnKhFtxdtBSiIUkIAp43iUug',
     },
     {
       image: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/yluu…zulael/ljhwZthlaukjlkulzlp/extension_banner_3.png',
-      title: '开发者激励计划',
-      desc: '召集优秀开发者，共同拓展多维表格开放能力',
+      title: 'Developer Incentive Program',
+      desc: 'Bringing together talented developers to expand open capabilitie',
       url: 'https://bytedance.larkoffice.com/wiki/O7uQw0pp6ilBxRkeeBDcv2bBnEf',
     },
     {
       image: 'https://lf3-static.bytednsdoc.com/obj/eden-cn/yluu…zulael/ljhwZthlaukjlkulzlp/extension_banner_4.png',
-      title: '开发者激励榜单',
-      desc: '榜单出炉，你常用的插件上榜了吗?',
+      title: 'Developer Incentive List',
+      desc: 'The list is out',
       url: 'https://feishu.feishu.cn/base/Ph2Pb2ec7aOyowsIhjpcnXbmnVy?table=ldxEi12i1tvivz3p',
     },
   ]);
 
-  function carouselItemClick(item) {
-    window.open(item.url, '_blank');
+  function openUrl(url) {
+    window.open(url, '_blank');
   }
 </script>
 
@@ -425,7 +476,7 @@
         theme="outline"
         strokeLinecap="square"
       />
-      <span> 欢迎使用多维表格插件 </span>
+      <span> {{ $t('Welcome to the Lark plugin') }} </span>
       <!-- <el-tooltip
         placement="right"
         effect="customized"
@@ -448,22 +499,22 @@
       <el-carousel-item
         v-for="(item, index) in carouselList"
         :key="item.title"
-        @click="carouselItemClick(item)"
+        @click="openUrl(item.url)"
       >
         <div :class="`carouse carouse-${index}`">
-          <div class="carouse-title">{{ item.title }}</div>
-          <div class="carouse-desc">{{ item.desc }}</div>
+          <div class="carouse-title">{{ $t(item.title) }}</div>
+          <div class="carouse-desc">{{ $t(item.desc) }}</div>
         </div>
       </el-carousel-item>
     </el-carousel>
 
     <div class="addView-line">
-      <div class="addView-line-label">插件信息:</div>
+      <div class="addView-line-label">{{ $t('Plugin Description') }}</div>
       <el-input
         style="width: 60%"
         v-model="pluginInfo"
         clearable
-        placeholder="请输入插件名字或描述"
+        :placeholder="$t('Please enter a plugin name or description')"
         @keydown.enter="search"
       />
     </div>
@@ -497,7 +548,7 @@
         @click="search"
       >
         <el-icon><Search /></el-icon>
-        <span>查询</span>
+        <span>{{ $t('search') }}</span>
       </el-button>
 
       <el-button
@@ -506,7 +557,7 @@
         @click="reset"
       >
         <el-icon><Refresh /></el-icon>
-        <span>重置</span>
+        <span>{{ $t('reset') }}</span>
       </el-button>
     </div>
 
@@ -514,16 +565,16 @@
     <!-- v-loading="loading" -->
     <!-- element-loading-text="加载中..." -->
     <div class="table">
-      <div>共 {{ filterTableDataList.length }} 个插件</div>
+      <div class="total">{{ $t('total') + ' ' + filterTableDataList.length + ' ' + $t('info') }}</div>
       <el-table
         ref="tableRef"
         :data="filterTableDataList"
         max-height="63vh"
-        empty-text="暂无数据"
+        :empty-text="$t('No data available')"
       >
         <el-table-column type="index" />
         <el-table-column
-          label="插件名字"
+          :label="$t('pluginName')"
           header-align="center"
         >
           <template #default="scope">
@@ -550,14 +601,14 @@
                 <HightLightText
                   :key="scope.row.recordId + Math.random()"
                   :inputText="inputText"
-                  :allText="scope.row.name[0].text"
+                  :allText="isZh ? scope.row.name[0].text : scope.row.nameEn"
                 />
               </div>
             </div>
           </template>
         </el-table-column>
         <el-table-column
-          label="插件描述"
+          :label="$t('Plugin Description')"
           min-width="100%"
           header-align="center"
         >
@@ -574,15 +625,14 @@
               <HightLightText
                 :key="scope.row.recordId + Math.random()"
                 :inputText="inputText"
-                :allText="scope.row.description[0].text"
+                :allText="isZh ? scope.row.description[0].text : scope.row.descriptionEn"
               />
             </div>
           </template>
         </el-table-column>
         <el-table-column
           property="name"
-          label="操作"
-          width="60"
+          :label="$t('manipulate')"
         >
           <template #default="scope">
             <!-- <doc-detail
@@ -608,14 +658,14 @@
                 class="pluginDetail"
                 @click="detail(scope.row)"
               >
-                详情
+                {{ $t('particulars') }}
               </div>
               <div
                 class="tryPlugin"
                 v-if="getLink(scope.row?.detailUrl)"
                 @click="tryPlugin(scope.row)"
               >
-                试用
+                {{ $t('probation') }}
               </div>
             </div>
           </template>
@@ -647,7 +697,11 @@
           :id="titleId"
           class="header"
         >
-          插件详情
+          <ViewGridDetail
+            theme="outline"
+            class="header-icon"
+          />
+          {{ $t('Plugin Details') }}
         </div>
         <el-button
           type="danger"
@@ -655,28 +709,28 @@
           size="small"
         >
           <el-icon class="el-icon--left"><CircleCloseFilled /></el-icon>
-          关闭
+          {{ $t('close') }}
         </el-button>
       </template>
 
       <div class="list">
         <div class="item">
-          <div class="label">插件名字：</div>
-          <div>{{ activeItem.name[0].text }}</div>
+          <div class="label">{{ $t('pluginName') }}</div>
+          <div>{{ isZh ? activeItem.name[0].text : activeItem.nameEn }}</div>
         </div>
         <div class="item">
-          <div class="label">插件描述：</div>
-          <div>{{ activeItem.description[0].text }}</div>
+          <div class="label">{{ $t('Plugin Description') }}</div>
+          <div>{{ isZh ? activeItem.description[0].text : activeItem.descriptionEn }}</div>
         </div>
         <div class="item">
-          <div class="label">插件作者：</div>
-          <div>{{ activeItem.author[0].text }}</div>
+          <div class="label">{{ $t('Plugin Author') }}</div>
+          <div>{{ isZh ? activeItem.author[0].text : activeItem.authorEn }}</div>
         </div>
 
         <div class="item">
-          <div class="label">功能预览图：</div>
+          <div class="label">{{ $t('Feature Preview') }}</div>
 
-          <div v-if="activeGif === '无'">暂无功能预览图</div>
+          <div v-if="activeGif === '无'">{{ $t('No feature preview available') }}</div>
           <el-image
             v-else-if="activeGif"
             :src="activeGif"
@@ -713,13 +767,13 @@
         <!-- FIXME 暂时隐藏, 因为官方表格也没展示这个 -->
         <!-- <div class="item">
           <div class="label">最后更新时间：</div>
-          <div>{{ dayjs(activeItem.lastUpdateTime).format('YYYY-MM-DD HH:mm') }}</div>
+          <div>{{ dayjs(activeItem.lastUpdateTime).format('YYYY-MM-DD Hicon) }}</div>
         </div> -->
 
         <div class="item">
-          <div class="label">图标：</div>
+          <div class="label">{{ $t('icon') }}</div>
 
-          <div v-if="activeIcon === '无'">暂无图标</div>
+          <div v-if="activeIcon === '无'">{{ $t('No icon') }}</div>
           <el-image
             v-else-if="activeIcon"
             style="width: 40px; height: 40px"
@@ -760,35 +814,48 @@
         </div>
 
         <div class="item">
-          <div class="label">如何使用：</div>
-          <div>{{ activeItem.useMethod[0].text }}</div>
+          <div class="label">{{ $t('How to use') }}</div>
+          <div>{{ isZh ? activeItem.useMethod[0].text : activeItem.useMethodEn }}</div>
         </div>
 
-        <div class="item">
-          <div class="label">项目地址：</div>
-          <a
-            class="link"
-            v-if="getLink(activeItem?.projectUrl)"
+        <div class="item startUseDiv">
+          <el-button
             type="primary"
-            :href="getLink(activeItem?.projectUrl)"
-            target="_blank"
-            >{{ getLink(activeItem?.projectUrl) }}</a
-          >
-          <div v-else>{{ '暂无项目地址' }}</div>
-        </div>
-
-        <div class="item">
-          <div class="label">插件试用地址：</div>
-          <a
-            class="link"
+            class="startUse"
+            @click="openUrl(getLink(activeItem?.detailUrl))"
             v-if="getLink(activeItem?.detailUrl)"
-            :href="getLink(activeItem?.detailUrl)"
-            target="_blank"
-            >{{ getLink(activeItem?.detailUrl) }}</a
           >
-
-          <div v-else>{{ '暂无插件试用地址' }}</div>
+            <PlayOne
+              theme="outline"
+              size="24"
+              class="startUse-icon"
+            />
+            <span>{{ $t('Start Trial') }}</span>
+          </el-button>
+          <div
+            class="icon-btn"
+            v-if="getLink(activeItem?.detailUrl)"
+            @click="() => copyUrl(getLink(activeItem?.detailUrl))"
+          >
+            <ShareThree
+              :title="$t('share')"
+              theme="outline"
+              size="20"
+            />
+          </div>
+          <div
+            v-if="getLink(activeItem?.projectUrl)"
+            class="icon-btn"
+            @click="openUrl(getLink(activeItem?.projectUrl))"
+          >
+            <Code
+              :title="$t('View source code')"
+              theme="outline"
+              size="20"
+            />
+          </div>
         </div>
+
         <div class="item">
           <el-tooltip
             :hide-after="0"
@@ -796,7 +863,9 @@
             effect="customized"
           >
             <template #content
-              >插件有帮助到你的话，<br />邀请你夸一夸插件的开发者，<br />你的鼓励是开发者开发插件的动力。</template
+              >{{ $t('The plugin has helped you then') }}<br />{{
+                $t('Inviting you to compliment the developers of the plugin that')
+              }}<br />{{ $t('Your encouragement is what motivates developers to develop plugins') }}</template
             >
             <div
               class="label good"
@@ -806,7 +875,7 @@
                 theme="filled"
                 size="16"
               />
-              <span>我要去夸一夸开发者~</span>
+              <span>{{ $t('I going to compliment the developers') }}</span>
             </div>
           </el-tooltip>
         </div>
@@ -924,6 +993,7 @@
   .tip-icon {
     position: relative;
     top: 2px;
+    margin-right: 5px;
   }
 
   .addView-line {
@@ -954,12 +1024,38 @@
     /* display: flex; */
     .item {
       display: flex;
+      align-items: center;
       margin-bottom: 14px;
       .label {
-        min-width: 115px;
+        min-width: 135px;
         color: rgb(20, 86, 240);
         white-space: nowrap;
+        font-weight: bold;
       }
+    }
+  }
+
+  .startUseDiv {
+    margin-top: 24px;
+  }
+
+  .icon-btn {
+    margin-left: 10px;
+    border: 1px solid #d1d3d6;
+    border-radius: 4px;
+    padding: 2px 4px;
+    &:hover {
+      cursor: pointer;
+      background-color: #eff0f3;
+    }
+  }
+
+  .startUse {
+    flex: 1;
+    font-weight: 500;
+    font-size: 16px;
+    .startUse-icon {
+      margin-right: 2px;
     }
   }
 
@@ -1062,9 +1158,18 @@
   }
 
   .header {
-    font-size: 16px;
+    display: flex;
+    font-size: 18px;
     color: rgb(20, 86, 240);
-    font-weight: 500;
+    font-weight: 700;
+
+    .header-icon {
+      margin-right: 5px;
+    }
+  }
+
+  .total {
+    line-height: 16px;
   }
 </style>
 
