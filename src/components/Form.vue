@@ -3,13 +3,22 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2024-01-13 14:40
+ * @LastTime   : 2024-01-17 21:12
  * @desc       : 
 -->
 
 <script setup lang="ts">
   import { bitable } from '@lark-base-open/js-sdk';
-  import { LarkOne, DocDetail, Like, Code, ShareThree, PlayOne, ViewGridDetail } from '@icon-park/vue-next';
+  import {
+    LarkOne,
+    DocDetail,
+    Like,
+    Code,
+    ShareThree,
+    PlayOne,
+    ViewGridDetail,
+    Communication,
+  } from '@icon-park/vue-next';
   import { dayjs } from 'element-plus';
   import { records } from './records';
   import { fieldMeteListDemo } from './fieldMeteList';
@@ -477,17 +486,22 @@
         strokeLinecap="square"
       />
       <span> {{ $t('Welcome to the Lark plugin') }} </span>
-      <!-- <el-tooltip
+      <el-tooltip
         placement="right"
         effect="customized"
       >
-        <template #content>没找到想要的插件?<br />提交一个需求吧。</template>
-        <el-icon
-          class="tip-icon cursor"
-          @click="submit"
-          ><QuestionFilled
-        /></el-icon>
-      </el-tooltip> -->
+        <template #content>{{ $t('Join the plugin exchange group') }}</template>
+        <Communication
+          class="com"
+          theme="outline"
+          size="20"
+          @click="
+            openUrl(
+              'https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=c48m8fd5-d2e3-43f4-b667-f1895e8faf27',
+            )
+          "
+        />
+      </el-tooltip>
     </div>
 
     <el-carousel
@@ -569,7 +583,7 @@
       <el-table
         ref="tableRef"
         :data="filterTableDataList"
-        max-height="63vh"
+        max-height="61vh"
         :empty-text="$t('No data available')"
       >
         <el-table-column type="index" />
@@ -715,20 +729,88 @@
 
       <div class="list">
         <div class="item">
-          <div class="label">{{ $t('pluginName') }}</div>
-          <div>{{ isZh ? activeItem.name[0].text : activeItem.nameEn }}</div>
-        </div>
-        <div class="item">
-          <div class="label">{{ $t('Plugin Description') }}</div>
-          <div>{{ isZh ? activeItem.description[0].text : activeItem.descriptionEn }}</div>
-        </div>
-        <div class="item">
-          <div class="label">{{ $t('Plugin Author') }}</div>
-          <div>{{ isZh ? activeItem.author[0].text : activeItem.authorEn }}</div>
+          <div class="item-icon">
+            <div v-if="activeIcon === '无'">{{ $t('No icon') }}</div>
+            <el-image
+              v-else-if="activeIcon"
+              style="width: 44px; height: 44px"
+              :src="activeIcon"
+              :zoom-rate="1.2"
+              :max-scale="7"
+              :min-scale="0.2"
+              :preview-src-list="[activeIcon]"
+              hide-on-click-modal
+              fit="cover"
+            />
+
+            <div
+              v-else
+              v-loading="iconLoading"
+            ></div>
+          </div>
+          <div class="item-info">
+            <div class="item-name">{{ isZh ? activeItem.name[0].text : activeItem.nameEn }}</div>
+            <div class="item-user">
+              <span>{{ $t('Developed by') }}</span>
+              <span>{{ isZh ? activeItem.author[0].text : activeItem.authorEn }}</span>
+            </div>
+          </div>
         </div>
 
+        <div class="item startUseDiv">
+          <el-button
+            type="primary"
+            class="startUse"
+            @click="openUrl(getLink(activeItem?.detailUrl))"
+            v-if="getLink(activeItem?.detailUrl)"
+          >
+            <PlayOne
+              theme="outline"
+              size="22"
+              class="startUse-icon"
+            />
+            <span>{{ $t('Start Trial') }}</span>
+          </el-button>
+          <div
+            class="icon-btn"
+            v-if="getLink(activeItem?.detailUrl)"
+            @click="() => copyUrl(getLink(activeItem?.detailUrl))"
+          >
+            <ShareThree
+              :title="$t('share')"
+              theme="outline"
+              size="20"
+            />
+          </div>
+          <div
+            v-if="getLink(activeItem?.projectUrl)"
+            class="icon-btn"
+            @click="openUrl(getLink(activeItem?.projectUrl))"
+          >
+            <Code
+              :title="$t('View source code')"
+              theme="outline"
+              size="20"
+            />
+          </div>
+        </div>
+
+        <!-- <div class="item">
+          <div class="label">{{ $t('pluginName') }}</div>
+          <div>{{ isZh ? activeItem.name[0].text : activeItem.nameEn }}</div>
+        </div> -->
+
+        <div class="item item-desc">
+          <!-- <div class="label">{{ $t('Plugin Description') }}</div> -->
+          <div>{{ isZh ? activeItem.description[0].text : activeItem.descriptionEn }}</div>
+        </div>
+        <!-- <div class="item">
+          <div class="label">{{ $t('Plugin Author') }}</div>
+          <div>{{ isZh ? activeItem.author[0].text : activeItem.authorEn }}</div>
+        </div> -->
+
         <div class="item">
-          <div class="label">{{ $t('Feature Preview') }}</div>
+          <!-- <div class="label">{{ $t('Feature Preview') }}</div> -->
 
           <div v-if="activeGif === '无'">{{ $t('No feature preview available') }}</div>
           <el-image
@@ -770,6 +852,7 @@
           <div>{{ dayjs(activeItem.lastUpdateTime).format('YYYY-MM-DD Hicon) }}</div>
         </div> -->
 
+        <!-- 
         <div class="item">
           <div class="label">{{ $t('icon') }}</div>
 
@@ -790,71 +873,12 @@
             v-else
             v-loading="iconLoading"
           ></div>
+        </div> -->
 
-          <!-- <div v-else>暂无图标</div> -->
-
-          <!-- <div v-if="iconUrl === '无'">暂无图标</div>
-
-          <el-image
-            v-loading="iconLoading"
-            style="width: 40px; height: 40px"
-            v-else-if="iconUrl"
-            :src="iconUrl"
-            :zoom-rate="1.2"
-            :max-scale="7"
-            :min-scale="0.2"
-            :preview-src-list="[iconUrl]"
-            :initial-index="0"
-            fit="cover"
-          />
-          <div
-            v-else
-            v-loading="iconLoading"
-          ></div> -->
-        </div>
-
-        <div class="item">
+        <!-- <div class="item">
           <div class="label">{{ $t('How to use') }}</div>
           <div>{{ isZh ? activeItem.useMethod[0].text : activeItem.useMethodEn }}</div>
-        </div>
-
-        <div class="item startUseDiv">
-          <el-button
-            type="primary"
-            class="startUse"
-            @click="openUrl(getLink(activeItem?.detailUrl))"
-            v-if="getLink(activeItem?.detailUrl)"
-          >
-            <PlayOne
-              theme="outline"
-              size="24"
-              class="startUse-icon"
-            />
-            <span>{{ $t('Start Trial') }}</span>
-          </el-button>
-          <div
-            class="icon-btn"
-            v-if="getLink(activeItem?.detailUrl)"
-            @click="() => copyUrl(getLink(activeItem?.detailUrl))"
-          >
-            <ShareThree
-              :title="$t('share')"
-              theme="outline"
-              size="20"
-            />
-          </div>
-          <div
-            v-if="getLink(activeItem?.projectUrl)"
-            class="icon-btn"
-            @click="openUrl(getLink(activeItem?.projectUrl))"
-          >
-            <Code
-              :title="$t('View source code')"
-              theme="outline"
-              size="20"
-            />
-          </div>
-        </div>
+        </div> -->
 
         <div class="item">
           <el-tooltip
@@ -983,11 +1007,18 @@
   }
 
   .tip {
+    display: flex;
+    align-items: center;
     color: rgb(20, 86, 240);
     opacity: 0.8;
     font-size: 16px;
     font-weight: 500;
     margin-bottom: 8px;
+  }
+
+  .com {
+    margin-left: 34px;
+    cursor: pointer;
   }
 
   .tip-icon {
@@ -1025,7 +1056,7 @@
     .item {
       display: flex;
       align-items: center;
-      margin-bottom: 14px;
+      margin-bottom: 20px;
       .label {
         min-width: 135px;
         color: rgb(20, 86, 240);
@@ -1036,7 +1067,7 @@
   }
 
   .startUseDiv {
-    margin-top: 24px;
+    margin-bottom: 24px !important;
   }
 
   .icon-btn {
@@ -1052,10 +1083,10 @@
 
   .startUse {
     flex: 1;
-    font-weight: 500;
+    /* font-weight: 500; */
     font-size: 16px;
     .startUse-icon {
-      margin-right: 2px;
+      margin-right: 3px;
     }
   }
 
@@ -1170,6 +1201,32 @@
 
   .total {
     line-height: 16px;
+  }
+
+  .item-icon {
+    margin-right: 14px;
+  }
+
+  .item-info {
+    display: flex;
+    height: 48px;
+    flex-direction: column;
+    justify-content: space-around;
+  }
+
+  .item-name {
+    font-size: 17px;
+    font-weight: 500;
+  }
+
+  .item-user {
+    font-size: 12px;
+    color: #646a73;
+  }
+
+  .item-desc {
+    color: #646a73;
+    line-height: 1.5;
   }
 </style>
 
