@@ -3,7 +3,7 @@
  * @Author     : itchaox
  * @Date       : 2023-12-23 09:34
  * @LastAuthor : itchaox
- * @LastTime   : 2024-02-25 11:05
+ * @LastTime   : 2024-02-27 01:32
  * @desc       : 
 -->
 
@@ -21,6 +21,7 @@
   } from '@icon-park/vue-next';
   import { dayjs } from 'element-plus';
   import { records } from './records';
+  import { records as recordsLark } from './records-lark';
   import { fieldMeteListDemo } from './fieldMeteList';
 
   import _ from 'lodash';
@@ -28,6 +29,10 @@
 
   import HightLightText from '@/components/HightLightText';
   import useClipboard from 'vue-clipboard3';
+
+  import { useTheme } from '@/hooks/useTheme';
+
+  const { theme } = useTheme();
 
   import { useI18n } from 'vue-i18n';
   const { t } = useI18n();
@@ -144,8 +149,11 @@
 
     // FIXME 从这个打印位置直接复制
     // console.log('🚀  records:', records);
+    const env = await bitable.bridge.getEnv();
 
-    records.forEach((item) => {
+    const _records = env.product === 'feishu' ? records : recordsLark;
+
+    _records.forEach((item) => {
       let _recordData = {};
       for (const fieldId in item.fields) {
         for (const key in fieldValues) {
@@ -520,7 +528,7 @@
       // 这里需要延迟设置标题，因为新标签页可能还没有完全加载
       setTimeout(() => {
         newWindow.document.title = name + ' ' + t('preview');
-      }, 20);
+      }, 100);
     }
   }
 </script>
@@ -659,7 +667,7 @@
                 v-else
               ></div>
 
-              <div>
+              <div :style="{ color: theme === 'LIGHT' ? '#1f2329' : '#fff' }">
                 <HightLightText
                   :key="scope.row.recordId + Math.random()"
                   :inputText="inputText"
@@ -683,7 +691,10 @@
             </span> -->
 
             <!-- {{ scope.row.description[0].text }} -->
-            <div class="plugin-description">
+            <div
+              class="plugin-description"
+              :style="{ color: theme === 'LIGHT' ? '#646a73' : '#ffffff90' }"
+            >
               <HightLightText
                 :key="scope.row.recordId + Math.random()"
                 :inputText="inputText"
@@ -1237,7 +1248,7 @@
   }
 
   .plugin-description {
-    color: #646a73;
+    /* color: #646a73; */
     font-size: 13px;
   }
 
